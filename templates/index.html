@@ -1,0 +1,633 @@
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Phishing Login Page Detector</title>
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background-color: #f8f9fa;
+        padding-top: 20px;
+      }
+      .brand {
+        font-weight: 700;
+        color: #3b5998;
+      }
+      .header-icon {
+        color: #ff6b6b;
+        margin-right: 10px;
+      }
+      .card {
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        margin-bottom: 20px;
+      }
+      .card-header {
+        background-color: #f1f5f9;
+        border-bottom: none;
+        font-weight: 600;
+      }
+      .btn-primary {
+        background-color: #4e73df;
+        border-color: #4e73df;
+      }
+      .btn-primary:hover {
+        background-color: #3756a4;
+        border-color: #3756a4;
+      }
+      .progress {
+        height: 10px;
+        border-radius: 5px;
+      }
+      .score-badge {
+        font-size: 1.5rem;
+        padding: 10px 15px;
+        border-radius: 50px;
+      }
+      .feature-icon {
+        width: 20px;
+        text-align: center;
+        margin-right: 8px;
+      }
+      .risk-high {
+        color: #e74a3b;
+      }
+      .risk-medium {
+        color: #f6c23e;
+      }
+      .risk-low {
+        color: #1cc88a;
+      }
+      #urlInput {
+        border-radius: 5px 0 0 5px;
+      }
+      #scanButton {
+        border-radius: 0 5px 5px 0;
+      }
+      .loader {
+        border: 5px solid #f3f3f3;
+        border-top: 5px solid #3498db;
+        border-radius: 50%;
+        width: 50px;
+        height: 50px;
+        animation: spin 2s linear infinite;
+        margin: 20px auto;
+      }
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+      .history-item {
+        cursor: pointer;
+        transition: background-color 0.2s;
+      }
+      .history-item:hover {
+        background-color: #f1f5f9;
+      }
+      .dashboard {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="row justify-content-center">
+        <div class="col-lg-10">
+          <div class="text-center mb-4">
+            <h1 class="mb-3">
+              <i class="fas fa-shield-alt header-icon"></i>
+              <span class="brand">Phishing Login Page Detector</span>
+            </h1>
+            <p class="lead text-muted">
+              Analyze login pages for phishing indicators and security risks
+            </p>
+          </div>
+
+          <div class="card mb-4">
+            <div class="card-body">
+              <div class="input-group mb-3">
+                <input
+                  type="text"
+                  class="form-control"
+                  id="urlInput"
+                  placeholder="Enter URL to analyze (e.g., https://example.com/login)"
+                />
+                <button class="btn btn-primary" type="button" id="scanButton">
+                  <i class="fas fa-search"></i> Scan
+                </button>
+              </div>
+              <div class="text-muted small">
+                <i class="fas fa-info-circle"></i> Enter a complete URL
+                including http:// or https://
+              </div>
+            </div>
+          </div>
+
+          <!-- Loading indicator -->
+          <div id="loadingSection" class="text-center py-5 d-none">
+            <div class="loader"></div>
+            <p class="mt-3">Analyzing the URL...</p>
+            <p class="text-muted small">This may take a few moments</p>
+          </div>
+
+          <!-- Results Dashboard -->
+          <div id="resultsDashboard" class="dashboard">
+            <div class="row">
+              <div class="col-md-12">
+                <div class="card">
+                  <div
+                    class="card-header d-flex justify-content-between align-items-center"
+                  >
+                    <span>Scan Results</span>
+                    <span id="scanTimestamp" class="text-muted small"></span>
+                  </div>
+                  <div class="card-body">
+                    <div class="d-flex align-items-center mb-4">
+                      <div class="flex-grow-1">
+                        <h5 class="mb-1" id="resultUrl"></h5>
+                        <div class="text-muted small" id="resultDomain"></div>
+                      </div>
+                      <div>
+                        <span
+                          class="badge bg-primary score-badge"
+                          id="resultScore"
+                          >0</span
+                        >
+                      </div>
+                    </div>
+
+                    <div class="mb-3">
+                      <div class="d-flex justify-content-between mb-1">
+                        <span>Risk Level</span>
+                        <span id="riskLevelText">Unknown</span>
+                      </div>
+                      <div class="progress">
+                        <div
+                          id="riskLevelProgress"
+                          class="progress-bar"
+                          role="progressbar"
+                          style="width: 0%"
+                        ></div>
+                      </div>
+                    </div>
+
+                    <div class="row mt-4">
+                      <div class="col-md-6">
+                        <h6>
+                          <i class="fas fa-lock feature-icon"></i> Security
+                        </h6>
+                        <ul class="list-group list-group-flush">
+                          <li
+                            class="list-group-item d-flex justify-content-between align-items-center"
+                            id="sslItem"
+                          >
+                            SSL Certificate
+                            <span id="sslStatus"></span>
+                          </li>
+                          <li
+                            class="list-group-item d-flex justify-content-between align-items-center"
+                            id="httpsItem"
+                          >
+                            HTTPS Protocol
+                            <span id="httpsStatus"></span>
+                          </li>
+                          <li
+                            class="list-group-item d-flex justify-content-between align-items-center"
+                            id="domainAgeItem"
+                          >
+                            Domain Age
+                            <span id="domainAgeStatus"></span>
+                          </li>
+                          <li
+                            class="list-group-item d-flex justify-content-between align-items-center"
+                            id="urlItem"
+                          >
+                            Suspicious URL
+                            <span id="urlStatus"></span>
+                          </li>
+                        </ul>
+                      </div>
+                      <div class="col-md-6">
+                        <h6>
+                          <i
+                            class="fas fa-exclamation-triangle feature-icon"
+                          ></i>
+                          Warning Signs
+                        </h6>
+                        <ul class="list-group list-group-flush">
+                          <li
+                            class="list-group-item d-flex justify-content-between align-items-center"
+                            id="loginFormItem"
+                          >
+                            Login Form
+                            <span id="loginFormStatus"></span>
+                          </li>
+                          <li
+                            class="list-group-item d-flex justify-content-between align-items-center"
+                            id="brandItem"
+                          >
+                            Brand Impersonation
+                            <span id="brandStatus"></span>
+                          </li>
+                          <li
+                            class="list-group-item d-flex justify-content-between align-items-center"
+                            id="redirectItem"
+                          >
+                            Suspicious Redirects
+                            <span id="redirectStatus"></span>
+                          </li>
+                          <li
+                            class="list-group-item d-flex justify-content-between align-items-center"
+                            id="obfuscationItem"
+                          >
+                            Code Obfuscation
+                            <span id="obfuscationStatus"></span>
+                          </li>
+                        </ul>
+                      </div>
+                    </div>
+
+                    <div
+                      class="mt-4"
+                      id="brandDetailsSection"
+                      style="display: none"
+                    >
+                      <h6>
+                        <i class="fas fa-tags feature-icon"></i> Brand Mentions
+                      </h6>
+                      <div class="card">
+                        <div class="card-body" id="brandDetails"></div>
+                      </div>
+                    </div>
+
+                    <div
+                      class="alert mt-4"
+                      id="recommendationAlert"
+                      role="alert"
+                    ></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Scan History -->
+          <div class="card mt-4">
+            <div class="card-header">
+              <i class="fas fa-history feature-icon"></i> Recent Scans
+            </div>
+            <div class="card-body">
+              <div id="noHistoryMessage" class="text-center text-muted py-3">
+                No scan history yet
+              </div>
+              <div id="historyList" class="list-group">
+                <!-- History items will be populated here -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        const urlInput = document.getElementById("urlInput");
+        const scanButton = document.getElementById("scanButton");
+        const loadingSection = document.getElementById("loadingSection");
+        const resultsDashboard = document.getElementById("resultsDashboard");
+
+        // Load scan history on page load
+        loadScanHistory();
+
+        // Scan button event listener
+        scanButton.addEventListener("click", function () {
+          const url = urlInput.value.trim();
+          if (!url) {
+            alert("Please enter a URL to scan");
+            return;
+          }
+
+          // Show loading indicator
+          loadingSection.classList.remove("d-none");
+          resultsDashboard.style.display = "none";
+
+          // Call the API to scan the URL
+          fetch("/api/scan", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ url: url }),
+          })
+            .then((response) => response.json())
+            .then((data) => {
+              if (data.scan_id) {
+                // Poll for results
+                pollResults(data.scan_id);
+              } else {
+                showError("Failed to start scan");
+                loadingSection.classList.add("d-none");
+              }
+            })
+            .catch((error) => {
+              console.error("Error:", error);
+              showError("Error starting scan: " + error.message);
+              loadingSection.classList.add("d-none");
+            });
+        });
+
+        // Function to poll for scan results
+        function pollResults(scanId) {
+          const pollInterval = setInterval(() => {
+            fetch(`/api/results/${scanId}`)
+              .then((response) => response.json())
+              .then((data) => {
+                if (data.status === "completed") {
+                  clearInterval(pollInterval);
+                  loadingSection.classList.add("d-none");
+                  displayResults(data.results);
+                  // Refresh scan history
+                  loadScanHistory();
+                } else if (data.status === "failed") {
+                  clearInterval(pollInterval);
+                  loadingSection.classList.add("d-none");
+                  showError("Scan failed: " + (data.error || "Unknown error"));
+                }
+                // If status is still 'processing', continue polling
+              })
+              .catch((error) => {
+                clearInterval(pollInterval);
+                console.error("Error polling results:", error);
+                loadingSection.classList.add("d-none");
+                showError("Error getting scan results: " + error.message);
+              });
+          }, 2000); // Poll every 2 seconds
+        }
+
+        // Function to display scan results
+        function displayResults(results) {
+          // Update URL and domain info
+          document.getElementById("resultUrl").textContent = results.url;
+          document.getElementById("resultDomain").textContent = results.domain;
+
+          // Format timestamp
+          const timestamp = new Date().toLocaleString();
+          document.getElementById("scanTimestamp").textContent = timestamp;
+
+          // Update score and risk level
+          const score = results.score;
+          document.getElementById("resultScore").textContent = score;
+
+          const riskLevel = results.risk_level;
+          const riskLevelText = document.getElementById("riskLevelText");
+          const riskLevelProgress =
+            document.getElementById("riskLevelProgress");
+
+          riskLevelText.textContent = riskLevel;
+          riskLevelProgress.style.width = score + "%";
+
+          if (riskLevel === "High") {
+            riskLevelText.className = "risk-high fw-bold";
+            riskLevelProgress.className = "progress-bar bg-danger";
+            document.getElementById("recommendationAlert").className =
+              "alert alert-danger mt-4";
+            document.getElementById("recommendationAlert").innerHTML =
+              '<i class="fas fa-exclamation-circle"></i> <strong>High Risk:</strong> This URL exhibits multiple characteristics of a phishing page. Exercise extreme caution.';
+          } else if (riskLevel === "Medium") {
+            riskLevelText.className = "risk-medium fw-bold";
+            riskLevelProgress.className = "progress-bar bg-warning";
+            document.getElementById("recommendationAlert").className =
+              "alert alert-warning mt-4";
+            document.getElementById("recommendationAlert").innerHTML =
+              '<i class="fas fa-exclamation-triangle"></i> <strong>Medium Risk:</strong> This URL shows some suspicious characteristics. Proceed with caution.';
+          } else {
+            riskLevelText.className = "risk-low fw-bold";
+            riskLevelProgress.className = "progress-bar bg-success";
+            document.getElementById("recommendationAlert").className =
+              "alert alert-success mt-4";
+            document.getElementById("recommendationAlert").innerHTML =
+              '<i class="fas fa-check-circle"></i> <strong>Low Risk:</strong> This URL appears to be legitimate based on analyzed characteristics.';
+          }
+
+          // Update security features
+          // SSL Certificate
+          const sslItem = document.getElementById("sslItem");
+          const sslStatus = document.getElementById("sslStatus");
+          if (results.features.ssl.has_valid_ssl) {
+            sslStatus.innerHTML = '<span class="badge bg-success">Valid</span>';
+          } else {
+            sslStatus.innerHTML =
+              '<span class="badge bg-danger">Invalid/Missing</span>';
+          }
+
+          // HTTPS Protocol
+          const httpsStatus = document.getElementById("httpsStatus");
+          if (results.features.ssl.is_https) {
+            httpsStatus.innerHTML = '<span class="badge bg-success">Yes</span>';
+          } else {
+            httpsStatus.innerHTML = '<span class="badge bg-danger">No</span>';
+          }
+
+          // Domain Age
+          const domainAgeStatus = document.getElementById("domainAgeStatus");
+          if (results.features.domain_age !== null) {
+            const ageClass =
+              results.features.domain_age < 30 ? "bg-danger" : "bg-success";
+            domainAgeStatus.innerHTML = `<span class="badge ${ageClass}">${results.features.domain_age} days</span>`;
+          } else {
+            domainAgeStatus.innerHTML =
+              '<span class="badge bg-secondary">Unknown</span>';
+          }
+
+          // Suspicious URL
+          const urlStatus = document.getElementById("urlStatus");
+          if (results.features.has_suspicious_url) {
+            urlStatus.innerHTML =
+              '<span class="badge bg-danger">Detected</span>';
+          } else {
+            urlStatus.innerHTML =
+              '<span class="badge bg-success">Not Detected</span>';
+          }
+
+          // Warning signs
+          // Login Form
+          const loginFormStatus = document.getElementById("loginFormStatus");
+          if (results.features.login_form.detected) {
+            const formClass =
+              results.features.login_form.suspicious_attrs.length > 0
+                ? "bg-danger"
+                : "bg-warning";
+            loginFormStatus.innerHTML = `<span class="badge ${formClass}">Detected</span>`;
+          } else {
+            loginFormStatus.innerHTML =
+              '<span class="badge bg-success">Not Detected</span>';
+          }
+
+          // Brand Impersonation
+          const brandStatus = document.getElementById("brandStatus");
+          const brandDetailsSection = document.getElementById(
+            "brandDetailsSection"
+          );
+          const brandDetails = document.getElementById("brandDetails");
+
+          if (results.features.brand_impersonation.brand_mentions.length > 0) {
+            const brandClass = results.features.brand_impersonation
+              .brand_in_domain
+              ? "bg-danger"
+              : "bg-warning";
+            brandStatus.innerHTML = `<span class="badge ${brandClass}">Detected</span>`;
+
+            // Show brand details
+            brandDetailsSection.style.display = "block";
+            const brandList =
+              results.features.brand_impersonation.brand_mentions.join(", ");
+            let brandDetailsHtml = `<p>Detected brand keywords: <strong>${brandList}</strong></p>`;
+
+            if (results.features.brand_impersonation.brand_in_domain) {
+              brandDetailsHtml +=
+                '<p class="text-danger"><i class="fas fa-exclamation-circle"></i> <strong>Warning:</strong> Brand name found in domain - possible impersonation attempt</p>';
+            }
+
+            brandDetails.innerHTML = brandDetailsHtml;
+          } else {
+            brandStatus.innerHTML =
+              '<span class="badge bg-success">Not Detected</span>';
+            brandDetailsSection.style.display = "none";
+          }
+
+          // Suspicious Redirects
+          const redirectStatus = document.getElementById("redirectStatus");
+          if (results.features.suspicious_redirects) {
+            redirectStatus.innerHTML =
+              '<span class="badge bg-danger">Detected</span>';
+          } else {
+            redirectStatus.innerHTML =
+              '<span class="badge bg-success">Not Detected</span>';
+          }
+
+          // Code Obfuscation
+          const obfuscationStatus =
+            document.getElementById("obfuscationStatus");
+          if (results.features.obfuscation_detected) {
+            obfuscationStatus.innerHTML =
+              '<span class="badge bg-danger">Detected</span>';
+          } else {
+            obfuscationStatus.innerHTML =
+              '<span class="badge bg-success">Not Detected</span>';
+          }
+
+          // Show the results dashboard
+          resultsDashboard.style.display = "block";
+        }
+
+        // Function to load scan history
+        function loadScanHistory() {
+          fetch("/api/history")
+            .then((response) => response.json())
+            .then((data) => {
+              const historyList = document.getElementById("historyList");
+              const noHistoryMessage =
+                document.getElementById("noHistoryMessage");
+
+              if (data.history && data.history.length > 0) {
+                // We have history items
+                noHistoryMessage.style.display = "none";
+                historyList.style.display = "block";
+
+                // Clear existing items
+                historyList.innerHTML = "";
+
+                // Add new items
+                data.history.forEach((item) => {
+                  const historyItem = document.createElement("a");
+                  historyItem.className =
+                    "list-group-item list-group-item-action history-item";
+                  historyItem.href = "#";
+
+                  // Format timestamp
+                  const timestamp = new Date(item.timestamp).toLocaleString();
+
+                  // Create status badge
+                  let statusBadge = "";
+                  if (item.status === "completed") {
+                    const badgeClass =
+                      item.risk_level === "High"
+                        ? "bg-danger"
+                        : item.risk_level === "Medium"
+                        ? "bg-warning"
+                        : "bg-success";
+                    statusBadge = `<span class="badge ${badgeClass}">${item.score}</span>`;
+                  } else if (item.status === "processing") {
+                    statusBadge =
+                      '<span class="badge bg-info">Processing</span>';
+                  } else {
+                    statusBadge = '<span class="badge bg-danger">Failed</span>';
+                  }
+
+                  historyItem.innerHTML = `
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h6 class="mb-1">${item.url}</h6>
+                                    ${statusBadge}
+                                </div>
+                                <small class="text-muted">${timestamp}</small>
+                            `;
+
+                  // Add click event to load results
+                  historyItem.addEventListener("click", function (e) {
+                    e.preventDefault();
+                    if (item.status === "completed") {
+                      // Fetch and display the results
+                      fetch(`/api/results/${item.scan_id}`)
+                        .then((response) => response.json())
+                        .then((data) => {
+                          if (data.status === "completed" && data.results) {
+                            loadingSection.classList.add("d-none");
+                            displayResults(data.results);
+                          }
+                        });
+                    }
+                  });
+
+                  historyList.appendChild(historyItem);
+                });
+              } else {
+                // No history items
+                noHistoryMessage.style.display = "block";
+                historyList.style.display = "none";
+              }
+            })
+            .catch((error) => {
+              console.error("Error loading scan history:", error);
+            });
+        }
+
+        // Function to show error message
+        function showError(message) {
+          alert(message);
+        }
+
+        // Allow Enter key to trigger scan
+        urlInput.addEventListener("keypress", function (e) {
+          if (e.key === "Enter") {
+            scanButton.click();
+          }
+        });
+      });
+    </script>
+  </body>
+</html>
