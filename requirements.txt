@@ -1,0 +1,8 @@
+```
+flask==2.3.3
+requests==2.31.0
+beautifulsoup4==4.12.2
+python-whois==0.8.0
+tldextract==3.4.4
+numpy==1.25.2
+```
